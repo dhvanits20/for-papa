@@ -1,0 +1,21 @@
+services:
+  - type: web
+    name: for-papa-app
+    env: python
+    buildCommand: "bash ./build.sh"
+    startCommand: "cd backend && uvicorn app.main:app --host 0.0.0.0 --port $PORT"
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.10.12
+      - key: STORAGE_DIR
+        value: /data/storage
+      - key: DATABASE_NAME
+        value: /data/memories.db
+      - key: CORS_ORIGINS
+        value: "*"
+      - key: CURATOR_PIN
+        value: "1963"
+    disk:
+      name: for-papa-data
+      mountPath: /data
+      sizeGB: 1
