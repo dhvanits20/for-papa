@@ -8,7 +8,7 @@ const MONTHS = [
   'July','August','September','October','November','December'
 ]
 
-export default function Grid({ navigateTo }) {
+export default function Grid({ navigateTo, shareToken, isGuest }) {
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear())
   const [stats, setStats] = useState({})  // { "YYYY-MM": count }
   const [covers, setCovers] = useState({}) // { "YYYY-MM": memoryId }
@@ -22,7 +22,7 @@ export default function Grid({ navigateTo }) {
     const load = async () => {
       setLoading(true)
       try {
-        const [statsArr, coversMap] = await Promise.all([getStats(), getCovers()])
+        const [statsArr, coversMap] = await Promise.all([getStats(shareToken), getCovers(shareToken)])
         // Transform stats array into map { "YYYY-MM": count }
         const statsMap = {}
         statsArr.forEach(s => {
@@ -37,7 +37,7 @@ export default function Grid({ navigateTo }) {
       }
     }
     load()
-  }, [])
+  }, [shareToken])
 
   return (
     <div className="max-w-5xl mx-auto px-4 py-10">
@@ -97,7 +97,7 @@ export default function Grid({ navigateTo }) {
               {/* Cover Image / Placeholder */}
               {coverId ? (
                 <img
-                  src={getFileUrl(coverId)}
+                  src={getFileUrl(coverId, shareToken)}
                   alt={month}
                   className="absolute inset-0 w-full h-full object-cover"
                 />

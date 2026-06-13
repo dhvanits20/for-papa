@@ -3,7 +3,6 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { X, Heart, Laugh, Star, Frown, Play, ChevronLeft, ChevronRight,
   Upload, Trash2, Image as ImageIcon, MessageCircle, Send, Quote, MapPin, Hash } from 'lucide-react'
 import { getMemories, getFileUrl, reactToMemory, commentOnMemory, deleteMemory, setCover, toggleFavorite } from '../utils/api'
-import { useCurator } from '../context/CuratorContext'
 import UploadModal from './Upload'
 
 const MONTHS = ['','January','February','March','April','May','June',
@@ -16,14 +15,13 @@ const REACTIONS = [
   { type: 'sad', emoji: '😢', label: 'Miss you' },
 ]
 
-export default function Gallery({ year, month, autoUpload, navigateTo, favoritesOnly, searchMode }) {
+export default function Gallery({ year, month, autoUpload, navigateTo, favoritesOnly, searchMode, shareToken, isGuest }) {
   const [memories, setMemories] = useState([])
   const [loading, setLoading] = useState(true)
   const [lightbox, setLightbox] = useState(null) // index
   const [showUpload, setShowUpload] = useState(false)
   const [commentText, setCommentText] = useState('')
   const [commentAuthor, setCommentAuthor] = useState('')
-  const { curatorPin } = useCurator()
 
   const load = async () => {
     setLoading(true)
@@ -34,7 +32,7 @@ export default function Gallery({ year, month, autoUpload, navigateTo, favorites
         fetchYear = null;
         fetchMonth = null;
       }
-      let data = await getMemories(fetchYear, fetchMonth)
+      let data = await getMemories(fetchYear, fetchMonth, null, false, shareToken)
       if (favoritesOnly) {
         data = data.filter(m => m.is_favorite);
       }
@@ -66,7 +64,7 @@ export default function Gallery({ year, month, autoUpload, navigateTo, favorites
 
   const handleReact = async (memoryId, rType) => {
     try {
-      const updated = await reactToMemory(memoryId, rType)
+      const updated = await reactToMemory(memoryId, rType, shareToken)
       setMemories(prev => prev.map(m => m.id === memoryId ? updated : m))
     } catch(e) { console.error(e) }
   }
@@ -74,38 +72,32 @@ export default function Gallery({ year, month, autoUpload, navigateTo, favorites
   const handleComment = async (memoryId) => {
     if (!commentText.trim() || !commentAuthor.trim()) return
     try {
-      const updated = await commentOnMemory(memoryId, commentAuthor, commentText)
+      const updated = await commentOnMemory(memoryId, commentAuthor, commentText, shareToken)
       setMemories(prev => prev.map(m => m.id === memoryId ? updated : m))
       setCommentText('')
     } catch(e) { console.error(e) }
   }
 
   const handleDelete = async (memoryId) => {
-    if (!curatorPin) return
     if (!confirm('Delete this memory? This cannot be undone.')) return
     try {
-      await deleteMemory(memoryId, curatorPin)
+      await deleteMemory(memoryId)
       setMemories(prev => prev.filter(m => m.id !== memoryId))
       if (lightbox !== null) setLightbox(null)
     } catch(e) { alert(e.message) }
   }
 
   const handleSetCover = async (memoryId) => {
-    if (!curatorPin) return
     try {
       const ym = `${year}-${String(month).padStart(2, '0')}`
-      await setCover(ym, memoryId, curatorPin)
+      await setCover(ym, memoryId)
       alert('✅ Cover photo updated!')
     } catch(e) { alert(e.message) }
   }
 
   const handleToggleFavorite = async (memoryId) => {
-    if (!curatorPin) {
-      alert("Please enter the Curator PIN to favorite memories.");
-      return;
-    }
     try {
-      const updated = await toggleFavorite(memoryId, curatorPin);
+      const updated = await toggleFavorite(memoryId);
       setMemories(prev => prev.map(m => m.id === memoryId ? updated : m));
     } catch(e) { alert(e.message) }
   }
@@ -148,16 +140,18 @@ export default function Gallery({ year, month, autoUpload, navigateTo, favorites
           </div>
         )}
 
-        <motion.button
-          id="open-upload"
-          whileHover={{ scale: 1.04 }}
-          whileTap={{ scale: 0.96 }}
-          onClick={() => setShowUpload(true)}
-          className="inline-flex items-center gap-2 bg-terracotta-500 hover:bg-terracotta-600 text-white font-semibold px-5 py-2.5 rounded-full shadow-lg shadow-terracotta-200 transition-colors"
-        >
-          <Upload className="w-4 h-4" />
-          Add a Memory
-        </motion.button>
+        {!isGuest && (
+          <motion.button
+            id="open-upload"
+            whileHover={{ scale: 1.04 }}
+            whileTap={{ scale: 0.96 }}
+            onClick={() => setShowUpload(true)}
+            className="inline-flex items-center gap-2 bg-terracotta-500 hover:bg-terracotta-600 text-white font-semibold px-5 py-2.5 rounded-full shadow-lg shadow-terracotta-200 transition-colors"
+          >
+            <Upload className="w-4 h-4" />
+            Add a Memory
+          </motion.button>
+        )}
       </div>
 
       {/* Loading */}
@@ -183,7 +177,7 @@ export default function Gallery({ year, month, autoUpload, navigateTo, favorites
           <p className="text-warmbrown mb-5">
             {searchMode && searchQuery ? `Try searching for something else.` : favoritesOnly ? 'You haven\'t added any favorites yet.' : `Be the first to add a photo or video for ${MONTHS[month]}!`}
           </p>
-          {!searchMode && !favoritesOnly && (
+          {!searchMode && !favoritesOnly && !isGuest && (
             <button
               onClick={() => setShowUpload(true)}
               className="bg-terracotta-500 text-white font-semibold px-6 py-2.5 rounded-full hover:bg-terracotta-600 transition-colors"
@@ -218,7 +212,7 @@ export default function Gallery({ year, month, autoUpload, navigateTo, favorites
                 ) : isVideo(m) ? (
                   <div className="relative overflow-hidden rounded-2xl">
                     <video
-                      src={getFileUrl(m.id)}
+                      src={getFileUrl(m.id, shareToken)}
                       className="w-full object-cover rounded-2xl max-h-72 group-hover:scale-105 transition-transform duration-500"
                       muted
                       preload="metadata"
@@ -232,7 +226,7 @@ export default function Gallery({ year, month, autoUpload, navigateTo, favorites
                 ) : (
                   <div className="relative overflow-hidden rounded-2xl">
                     <img
-                      src={getFileUrl(m.id)}
+                      src={getFileUrl(m.id, shareToken)}
                       alt={m.title || 'Memory'}
                       className="w-full object-cover rounded-2xl group-hover:scale-105 transition-transform duration-500"
                       loading="lazy"
@@ -248,14 +242,16 @@ export default function Gallery({ year, month, autoUpload, navigateTo, favorites
 
                 {/* Hover overlay with quick reactions */}
                 <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-all rounded-2xl flex flex-col justify-end p-4">
-                  <div className="absolute top-3 right-3">
-                    <button
-                      onClick={(e) => { e.stopPropagation(); handleToggleFavorite(m.id); }}
-                      className="hover:scale-110 transition-transform p-2 bg-black/20 rounded-full backdrop-blur-sm"
-                    >
-                      <Star className={`w-5 h-5 ${m.is_favorite ? 'text-yellow-400 fill-yellow-400' : 'text-white/90 hover:text-yellow-400'} drop-shadow-md`} />
-                    </button>
-                  </div>
+                  {!isGuest && (
+                    <div className="absolute top-3 right-3">
+                      <button
+                        onClick={(e) => { e.stopPropagation(); handleToggleFavorite(m.id); }}
+                        className="hover:scale-110 transition-transform p-2 bg-black/20 rounded-full backdrop-blur-sm"
+                      >
+                        <Star className={`w-5 h-5 ${m.is_favorite ? 'text-yellow-400 fill-yellow-400' : 'text-white/90 hover:text-yellow-400'} drop-shadow-md`} />
+                      </button>
+                    </div>
+                  )}
                   {m.title && m.file_type !== 'text/quote' && (
                     <p className="text-white text-sm font-medium truncate mb-1">{m.title}</p>
                   )}
@@ -277,7 +273,10 @@ export default function Gallery({ year, month, autoUpload, navigateTo, favorites
                       <button
                         key={r.type}
                         id={`react-${m.id}-${r.type}`}
-                        onClick={(e) => { e.stopPropagation(); handleReact(m.id, r.type) }}
+                        onClick={(e) => { 
+                          e.stopPropagation(); 
+                          handleReact(m.id, r.type);
+                        }}
                         className="text-sm hover:scale-125 transition-transform"
                         title={r.label}
                       >
@@ -306,42 +305,42 @@ export default function Gallery({ year, month, autoUpload, navigateTo, favorites
             id="lightbox-modal"
           >
             {/* Top bar */}
-            <div className="flex items-center justify-between p-4 border-b border-white/10">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-4 border-b border-white/10 gap-4">
               <div>
                 <p className="text-white font-semibold">{lb.title || 'Memory'}</p>
                 <p className="text-white/50 text-xs">{MONTHS[lb.month]} {lb.year}</p>
               </div>
-              <div className="flex items-center gap-3">
-                {curatorPin && (
-                  <>
-                    <button
-                      id="lightbox-favorite"
-                      onClick={() => handleToggleFavorite(lb.id)}
-                      className="text-xs bg-white/10 hover:bg-white/20 text-white px-3 py-1.5 rounded-full transition-colors flex items-center gap-1"
-                    >
-                      <Star className={`w-3 h-3 ${lb.is_favorite ? 'text-yellow-400 fill-yellow-400' : ''}`} />
-                      {lb.is_favorite ? 'Unfavorite' : 'Favorite'}
-                    </button>
-                    <button
-                      id="lightbox-set-cover"
-                      onClick={() => handleSetCover(lb.id)}
-                      className="text-xs bg-white/10 hover:bg-white/20 text-white px-3 py-1.5 rounded-full transition-colors"
-                    >
-                      📌 Set as Cover
-                    </button>
-                    <button
-                      id="lightbox-delete"
-                      onClick={() => handleDelete(lb.id)}
-                      className="text-xs bg-red-500/20 hover:bg-red-500/40 text-red-300 px-3 py-1.5 rounded-full transition-colors flex items-center gap-1"
-                    >
-                      <Trash2 className="w-3 h-3" /> Delete
-                    </button>
-                  </>
-                )}
+              <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+                  {!isGuest && (
+                    <>
+                      <button
+                        id="lightbox-favorite"
+                        onClick={() => handleToggleFavorite(lb.id)}
+                        className="text-xs bg-white/10 hover:bg-white/20 text-white px-3 py-1.5 rounded-full transition-colors flex items-center gap-1"
+                      >
+                        <Star className={`w-3 h-3 ${lb.is_favorite ? 'text-yellow-400 fill-yellow-400' : ''}`} />
+                        <span className="hidden sm:inline">{lb.is_favorite ? 'Unfavorite' : 'Favorite'}</span>
+                      </button>
+                      <button
+                        id="lightbox-set-cover"
+                        onClick={() => handleSetCover(lb.id)}
+                        className="text-xs bg-white/10 hover:bg-white/20 text-white px-3 py-1.5 rounded-full transition-colors"
+                      >
+                        📌 <span className="hidden sm:inline">Set as Cover</span>
+                      </button>
+                      <button
+                        id="lightbox-delete"
+                        onClick={() => handleDelete(lb.id)}
+                        className="text-xs bg-red-500/20 hover:bg-red-500/40 text-red-300 px-3 py-1.5 rounded-full transition-colors flex items-center gap-1"
+                      >
+                        <Trash2 className="w-3 h-3" /> <span className="hidden sm:inline">Delete</span>
+                      </button>
+                    </>
+                  )}
                 <button
                   id="lightbox-close"
                   onClick={() => setLightbox(null)}
-                  className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center transition-colors"
+                  className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center transition-colors ml-auto sm:ml-0"
                 >
                   <X className="w-4 h-4 text-white" />
                 </button>
@@ -387,7 +386,7 @@ export default function Gallery({ year, month, autoUpload, navigateTo, favorites
               ) : isVideo(lb) ? (
                 <video
                   key={lb.id}
-                  src={getFileUrl(lb.id)}
+                  src={getFileUrl(lb.id, shareToken)}
                   controls
                   autoPlay
                   className="max-h-full max-w-full rounded-xl object-contain"
@@ -396,7 +395,7 @@ export default function Gallery({ year, month, autoUpload, navigateTo, favorites
               ) : (
                 <img
                   key={lb.id}
-                  src={getFileUrl(lb.id)}
+                  src={getFileUrl(lb.id, shareToken)}
                   alt={lb.title}
                   className="max-h-full max-w-full rounded-xl object-contain"
                   style={{ maxHeight: '65vh' }}
@@ -413,7 +412,7 @@ export default function Gallery({ year, month, autoUpload, navigateTo, favorites
                     key={r.type}
                     id={`lb-react-${lb.id}-${r.type}`}
                     onClick={() => handleReact(lb.id, r.type)}
-                    className="flex items-center gap-1 bg-white/10 hover:bg-white/20 text-white px-3 py-1.5 rounded-full text-sm transition-all hover:scale-105"
+                    className="flex items-center gap-1 bg-white/10 hover:bg-white/20 hover:scale-105 text-white px-3 py-1.5 rounded-full text-sm transition-all"
                   >
                     {r.emoji} <span className="text-white/70">{lb.reactions[r.type] || 0}</span>
                   </button>
@@ -434,29 +433,31 @@ export default function Gallery({ year, month, autoUpload, navigateTo, favorites
               ))}
 
               {/* Add comment */}
-              <div className="flex gap-2 mt-3">
+              <div className="flex flex-col sm:flex-row gap-2 mt-3">
                 <input
                   id="comment-author"
                   placeholder="Your name"
                   value={commentAuthor}
                   onChange={e => setCommentAuthor(e.target.value)}
-                  className="w-28 bg-white/10 text-white placeholder-white/40 text-sm px-3 py-2 rounded-full border border-white/20 focus:outline-none focus:border-terracotta-400"
+                  className="w-full sm:w-32 bg-white/10 text-white placeholder-white/40 text-sm px-4 py-2.5 rounded-full border border-white/20 focus:outline-none focus:border-terracotta-400"
                 />
-                <input
-                  id="comment-text"
-                  placeholder="Add a comment…"
-                  value={commentText}
-                  onChange={e => setCommentText(e.target.value)}
-                  onKeyDown={e => e.key === 'Enter' && handleComment(lb.id)}
-                  className="flex-1 bg-white/10 text-white placeholder-white/40 text-sm px-3 py-2 rounded-full border border-white/20 focus:outline-none focus:border-terracotta-400"
-                />
-                <button
-                  id="comment-submit"
-                  onClick={() => handleComment(lb.id)}
-                  className="w-9 h-9 bg-terracotta-500 hover:bg-terracotta-600 rounded-full flex items-center justify-center transition-colors"
-                >
-                  <Send className="w-4 h-4 text-white" />
-                </button>
+                <div className="flex-1 flex gap-2">
+                  <input
+                    id="comment-text"
+                    placeholder="Add a comment…"
+                    value={commentText}
+                    onChange={e => setCommentText(e.target.value)}
+                    onKeyDown={e => e.key === 'Enter' && handleComment(lb.id)}
+                    className="flex-1 w-full bg-white/10 text-white placeholder-white/40 text-sm px-4 py-2.5 rounded-full border border-white/20 focus:outline-none focus:border-terracotta-400"
+                  />
+                  <button
+                    id="comment-submit"
+                    onClick={() => handleComment(lb.id)}
+                    className="w-10 h-10 flex-shrink-0 bg-terracotta-500 hover:bg-terracotta-600 rounded-full flex items-center justify-center transition-colors"
+                  >
+                    <Send className="w-4 h-4 text-white" />
+                  </button>
+                </div>
               </div>
             </div>
           </motion.div>

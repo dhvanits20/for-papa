@@ -1,22 +1,19 @@
-import { useRef, useState } from 'react'
+import { useRef, useState, useContext } from 'react'
 import { motion } from 'framer-motion'
 import { QRCodeSVG } from 'qrcode.react'
-import { Download, Copy, Share2, Check, Lock, LogOut } from 'lucide-react'
-import { useCurator } from '../context/CuratorContext'
-import { verifyPin } from '../utils/api'
+import { Download, Copy, Share2, Check } from 'lucide-react'
+import { AuthContext } from '../context/AuthContext'
 
 const SITE_URL = window.location.origin
 
 export default function Share() {
+  const { user } = useContext(AuthContext)
+  const shareUrl = user?.share_token ? `${SITE_URL}/?share=${user.share_token}` : SITE_URL
   const [copied, setCopied] = useState(false)
-  const [pin, setPin] = useState('')
-  const [pinError, setPinError] = useState('')
-  const [checkingPin, setCheckingPin] = useState(false)
-  const { curatorPin, setCuratorPin } = useCurator()
   const qrRef = useRef(null)
 
   const handleCopy = async () => {
-    await navigator.clipboard.writeText(SITE_URL)
+    await navigator.clipboard.writeText(shareUrl)
     setCopied(true)
     setTimeout(() => setCopied(false), 2000)
   }
@@ -43,7 +40,7 @@ export default function Share() {
 
       ctx.font = '16px sans-serif'
       ctx.fillStyle = '#8C7A6B'
-      ctx.fillText('Scan to add a memory', size / 2, size - 15)
+      ctx.fillText('Scan to view memories', size / 2, size - 15)
 
       const link = document.createElement('a')
       link.download = 'for-papa-qr.png'
@@ -53,20 +50,7 @@ export default function Share() {
     img.src = 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(svgData)))
   }
 
-  const handleVerifyPin = async () => {
-    if (!pin.trim()) return
-    setCheckingPin(true)
-    setPinError('')
-    try {
-      await verifyPin(pin)
-      setCuratorPin(pin)
-      setPin('')
-    } catch(e) {
-      setPinError('Wrong PIN — try again')
-    } finally {
-      setCheckingPin(false)
-    }
-  }
+
 
   return (
     <div className="max-w-4xl mx-auto px-4 py-10">
@@ -76,10 +60,10 @@ export default function Share() {
         className="mb-10"
       >
         <p className="text-xs font-bold tracking-widest uppercase text-warmbrown mb-1">Share the love</p>
-        <h1 className="font-serif text-5xl text-charcoal">One scan. Everyone joins in.</h1>
+        <h1 className="font-serif text-5xl text-charcoal">Share your album.</h1>
         <p className="text-warmbrown mt-2 max-w-lg">
-          Print this QR or send the image to family. Anyone with the QR can open the memory
-          book and add a photo or short video for Papa.
+          Print this QR or send the link to family. Anyone with the link can view
+          the memory book without signing up.
         </p>
       </motion.div>
 
@@ -97,7 +81,7 @@ export default function Share() {
           <div className="p-4 bg-cream rounded-2xl border-2 border-terracotta-100">
             <QRCodeSVG
               id="qr-code"
-              value={SITE_URL}
+              value={shareUrl}
               size={220}
               bgColor="#FAF6F0"
               fgColor="#2C2A29"
@@ -106,7 +90,7 @@ export default function Share() {
             />
           </div>
           <p className="text-xs text-warmbrown mt-4 tracking-wider uppercase font-semibold">
-            Scan to add a memory
+            Scan to view memories
           </p>
         </motion.div>
 
@@ -117,15 +101,7 @@ export default function Share() {
           transition={{ delay: 0.2 }}
           className="space-y-4"
         >
-          {/* URL box */}
-          <div>
-            <label className="text-xs font-bold uppercase tracking-widest text-warmbrown mb-2 block">
-              Website Link
-            </label>
-            <div className="flex items-center gap-2 bg-cream-dark rounded-2xl px-4 py-3 border border-terracotta-100">
-              <span className="text-sm text-charcoal flex-1 truncate">{SITE_URL}</span>
-            </div>
-          </div>
+
 
           {/* Action buttons */}
           <button
@@ -149,7 +125,7 @@ export default function Share() {
           {/* WhatsApp share */}
           <a
             id="btn-whatsapp-share"
-            href={`https://wa.me/?text=Open%20our%20memory%20book%20for%20Papa%20here%3A%20${encodeURIComponent(SITE_URL)}`}
+            href={`https://wa.me/?text=Open%20our%20memory%20book%20for%20Papa%20here%3A%20${encodeURIComponent(shareUrl)}`}
             target="_blank"
             rel="noopener noreferrer"
             className="w-full flex items-center justify-center gap-2 bg-[#25D366] hover:bg-[#1ebe5a] text-white font-semibold py-3 rounded-full transition-colors"
@@ -162,52 +138,7 @@ export default function Share() {
             💡 Print the QR and stick it on the fridge, or share it in your family group chat.
           </p>
 
-          {/* Curator PIN Section */}
-          <div className="mt-6 bg-cream-dark rounded-2xl p-5 border border-terracotta-100">
-            <div className="flex items-center gap-2 mb-3">
-              <Lock className="w-4 h-4 text-charcoal" />
-              <p className="font-semibold text-charcoal text-sm">Curator Mode</p>
-            </div>
 
-            {curatorPin ? (
-              <div className="flex items-center justify-between">
-                <p className="text-sm text-green-600 font-semibold">✅ Curator mode active</p>
-                <button
-                  id="curator-logout"
-                  onClick={() => setCuratorPin(null)}
-                  className="flex items-center gap-1 text-xs text-warmbrown hover:text-terracotta-600 transition-colors"
-                >
-                  <LogOut className="w-3 h-3" /> Log out
-                </button>
-              </div>
-            ) : (
-              <>
-                <p className="text-xs text-warmbrown mb-3">
-                  Enter the curator PIN to delete memories and set cover photos.
-                </p>
-                <div className="flex gap-2">
-                  <input
-                    id="curator-pin-input"
-                    type="password"
-                    placeholder="Enter PIN"
-                    value={pin}
-                    onChange={e => setPin(e.target.value)}
-                    onKeyDown={e => e.key === 'Enter' && handleVerifyPin()}
-                    className="flex-1 border border-terracotta-200 rounded-full px-4 py-2 text-sm focus:outline-none focus:border-terracotta-400 bg-white"
-                  />
-                  <button
-                    id="curator-pin-verify"
-                    onClick={handleVerifyPin}
-                    disabled={checkingPin}
-                    className="bg-charcoal text-cream px-4 py-2 rounded-full text-sm font-semibold hover:bg-charcoal-light transition-colors disabled:opacity-60"
-                  >
-                    {checkingPin ? '…' : 'Unlock'}
-                  </button>
-                </div>
-                {pinError && <p className="text-red-500 text-xs mt-2">{pinError}</p>}
-              </>
-            )}
-          </div>
         </motion.div>
       </div>
     </div>

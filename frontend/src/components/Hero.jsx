@@ -6,14 +6,14 @@ import confetti from 'canvas-confetti'
 import UploadModal from './Upload'
 import { getFileUrl, reactToMemory, getMemories } from '../utils/api'
 
-export default function Hero({ navigateTo }) {
+export default function Hero({ navigateTo, isGuest, shareToken }) {
   const [showUploadType, setShowUploadType] = useState(null)
   const [latestMemory, setLatestMemory] = useState(null)
 
   useEffect(() => {
     const fetchLatest = async () => {
       try {
-        const all = await getMemories()
+        const all = await getMemories(null, null, null, false, shareToken)
         if (all && all.length > 0) {
           const sorted = all.sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
           setLatestMemory(sorted[0])
@@ -23,7 +23,7 @@ export default function Hero({ navigateTo }) {
       }
     }
     fetchLatest()
-  }, [])
+  }, [shareToken])
 
   const triggerHearts = (e) => {
     const rect = e.currentTarget.getBoundingClientRect()
@@ -117,16 +117,18 @@ export default function Hero({ navigateTo }) {
                   <ArrowRight className="w-4 h-4" />
                 </motion.button>
 
-                <motion.button
-                  id="hero-share-qr"
-                  whileHover={{ scale: 1.03 }}
-                  whileTap={{ scale: 0.98 }}
-                  onClick={() => navigateTo('share')}
-                  className="inline-flex items-center gap-2 bg-charcoal hover:bg-charcoal-light text-cream font-semibold px-6 py-3 rounded-full transition-colors"
-                >
-                  <QrCode className="w-4 h-4" />
-                  Share QR
-                </motion.button>
+                {!isGuest && (
+                  <motion.button
+                    id="hero-share-qr"
+                    whileHover={{ scale: 1.03 }}
+                    whileTap={{ scale: 0.98 }}
+                    onClick={() => navigateTo('share')}
+                    className="inline-flex items-center gap-2 bg-charcoal hover:bg-charcoal-light text-cream font-semibold px-6 py-3 rounded-full transition-colors"
+                  >
+                    <QrCode className="w-4 h-4" />
+                    Share QR
+                  </motion.button>
+                )}
               </div>
             </motion.div>
 
@@ -154,7 +156,7 @@ export default function Hero({ navigateTo }) {
                   <div className="absolute inset-0">
                     {latestMemory.file_type.startsWith('video') ? (
                       <video
-                        src={getFileUrl(latestMemory.id)}
+                        src={getFileUrl(latestMemory.id, shareToken)}
                         className="w-full h-full object-contain"
                         autoPlay
                         loop
@@ -163,7 +165,7 @@ export default function Hero({ navigateTo }) {
                       />
                     ) : (
                       <img
-                        src={getFileUrl(latestMemory.id)}
+                        src={getFileUrl(latestMemory.id, shareToken)}
                         alt={latestMemory.title || "Memory"}
                         className="w-full h-full object-contain"
                       />
@@ -203,7 +205,8 @@ export default function Hero({ navigateTo }) {
                     onClick={(e) => {
                       if (type === 'heart') {
                         triggerHearts(e);
-                      } else {
+                        handleLike(e);
+                      } else if (!isGuest && type !== 'heart') {
                         setShowUploadType(type);
                       }
                     }}

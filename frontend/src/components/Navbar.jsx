@@ -1,7 +1,11 @@
 import { motion } from 'framer-motion'
-import { Heart, QrCode, BookOpen } from 'lucide-react'
+import { Heart, QrCode, BookOpen, LogOut } from 'lucide-react'
+import { useContext } from 'react'
+import { AuthContext } from '../context/AuthContext'
 
-export default function Navbar({ page, navigateTo }) {
+export default function Navbar({ page, navigateTo, isGuest }) {
+  const { logout, user } = useContext(AuthContext)
+  
   const links = [
     { id: 'home', label: 'Home', icon: null },
     { id: 'grid', label: 'Memories', icon: null },
@@ -32,7 +36,7 @@ export default function Navbar({ page, navigateTo }) {
 
         {/* Nav links */}
         <div className="flex items-center gap-1">
-          {links.map((link) => (
+          {links.filter(l => !isGuest || l.id !== 'share').map((link) => (
             <button
               key={link.id}
               id={`nav-${link.id}`}
@@ -46,6 +50,26 @@ export default function Navbar({ page, navigateTo }) {
               {link.label}
             </button>
           ))}
+          
+          <div className="w-px h-6 bg-terracotta-200 mx-2" />
+          
+          {isGuest ? (
+            <button
+              onClick={() => { window.location.href = '/' }}
+              className="px-4 py-1.5 bg-rust text-white rounded-full text-sm font-medium hover:bg-[#A64B3A] transition-all"
+            >
+              Create your own
+            </button>
+          ) : (
+            <button
+              onClick={logout}
+              className="px-3 py-1.5 flex items-center gap-2 rounded-full text-sm font-medium text-charcoal hover:bg-red-50 hover:text-red-600 transition-all duration-200"
+              title="Log out"
+            >
+              <LogOut className="w-4 h-4" />
+              <span className="hidden sm:inline">Logout</span>
+            </button>
+          )}
         </div>
       </div>
     </nav>
