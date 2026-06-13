@@ -20,7 +20,7 @@ export default function Navbar({ page, navigateTo, isGuest }) {
         {/* Logo */}
         <button
           onClick={() => navigateTo('home')}
-          className="flex items-center gap-2 group"
+          className="flex items-center gap-2 group shrink-0"
           id="nav-logo"
         >
           <motion.div
@@ -35,13 +35,13 @@ export default function Navbar({ page, navigateTo, isGuest }) {
         </button>
 
         {/* Nav links */}
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-1 overflow-x-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] ml-4">
           {links.filter(l => !isGuest || l.id !== 'share').map((link) => (
             <button
               key={link.id}
               id={`nav-${link.id}`}
               onClick={() => navigateTo(link.id)}
-              className={`px-3 py-1.5 rounded-full text-sm font-medium transition-all duration-200 ${
+              className={`whitespace-nowrap px-3 py-1.5 rounded-full text-sm font-medium transition-all duration-200 ${
                 page === link.id
                   ? 'bg-charcoal text-cream'
                   : 'text-charcoal hover:bg-terracotta-100 hover:text-terracotta-700'
@@ -51,23 +51,23 @@ export default function Navbar({ page, navigateTo, isGuest }) {
             </button>
           ))}
           
-          <div className="w-px h-6 bg-terracotta-200 mx-2" />
+          <div className="w-px h-6 bg-terracotta-200 mx-2 shrink-0" />
           
           {isGuest ? (
             <button
               onClick={() => { window.location.href = '/' }}
-              className="px-4 py-1.5 bg-rust text-white rounded-full text-sm font-medium hover:bg-[#A64B3A] transition-all"
+              className="whitespace-nowrap shrink-0 px-4 py-1.5 bg-rust text-white rounded-full text-sm font-medium hover:bg-[#A64B3A] transition-all"
             >
               Create your own
             </button>
           ) : (
             <button
               onClick={logout}
-              className="px-3 py-1.5 flex items-center gap-2 rounded-full text-sm font-medium text-charcoal hover:bg-red-50 hover:text-red-600 transition-all duration-200"
+              className="whitespace-nowrap shrink-0 px-3 py-1.5 flex items-center gap-2 rounded-full text-sm font-medium text-charcoal hover:bg-red-50 hover:text-red-600 transition-all duration-200"
               title="Log out"
             >
-              <LogOut className="w-4 h-4" />
-              <span className="hidden sm:inline">Logout</span>
+              <LogOut className="w-4 h-4 shrink-0" />
+              <span className="inline">Logout</span>
             </button>
           )}
         </div>

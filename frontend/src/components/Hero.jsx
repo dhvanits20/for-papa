@@ -80,7 +80,7 @@ export default function Hero({ navigateTo, isGuest, shareToken }) {
           <div className="absolute top-1/2 -left-24 w-72 h-72 bg-terracotta-100 rounded-full blur-3xl opacity-50" />
         </div>
 
-        <div className="max-w-5xl mx-auto px-4 pt-16 pb-8">
+        <div className="max-w-5xl mx-auto px-4 pt-8 md:pt-16 pb-8">
           <div className="grid md:grid-cols-2 gap-8 items-center">
             {/* Left text */}
             <motion.div
@@ -93,7 +93,7 @@ export default function Hero({ navigateTo, isGuest, shareToken }) {
                 A Memory Book for Papa
               </div>
 
-              <h1 className="font-serif text-5xl md:text-6xl text-charcoal leading-tight mb-5">
+              <h1 className="font-serif text-4xl sm:text-5xl md:text-6xl text-charcoal leading-tight mb-5">
                 Every moment<br />
                 with you,{' '}
                 <em className="text-terracotta-500 not-italic">treasured.</em>
