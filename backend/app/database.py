@@ -247,14 +247,29 @@ class SQLiteRepo:
 
 class MongoRepo:
     def __init__(self, uri: str, db_name: str):
-        from motor.motor_asyncio import AsyncIOMotorClient
-        self.client = AsyncIOMotorClient(uri)
-        self.db = self.client[db_name]
-        self.memories = self.db["memories"]
-        self.covers = self.db["covers"]
-        self.users = self.db["users"]
-        self.users.create_index("username", unique=True)
-        self.users.create_index("share_token", unique=True)
+        self.uri = uri
+        self.db_name = db_name
+        self._client = None
+        self._db = None
+
+    def _get_db(self):
+        if self._client is None:
+            from motor.motor_asyncio import AsyncIOMotorClient
+            self._client = AsyncIOMotorClient(self.uri)
+            self._db = self._client[self.db_name]
+        return self._db
+
+    @property
+    def users(self):
+        return self._get_db()["users"]
+
+    @property
+    def memories(self):
+        return self._get_db()["memories"]
+
+    @property
+    def covers(self):
+        return self._get_db()["covers"]
 
     async def create_user(self, user: Dict[str, Any]) -> Optional[Dict[str, Any]]:
         try:
