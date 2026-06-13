@@ -14,9 +14,10 @@ export default function Grid({ navigateTo, shareToken, isGuest }) {
   const [covers, setCovers] = useState({}) // { "YYYY-MM": memoryId }
   const [loading, setLoading] = useState(true)
 
-  // Available years: past 50 years to current
-  const currentYear = new Date().getFullYear()
-  const years = Array.from({ length: 50 }, (_, i) => currentYear - i)
+  // Available years: 2008 to 2030
+  const startYear = 2008
+  const endYear = 2030
+  const years = Array.from({ length: endYear - startYear + 1 }, (_, i) => startYear + i)
 
   useEffect(() => {
     const load = async () => {
