@@ -81,7 +81,20 @@ export const uploadMemories = async (formData) => {
     headers: getAuthHeaders(),
     body: formData,
   });
-  if (!res.ok) throw new Error('Upload failed');
+  if (!res.ok) {
+    let errorDetail = `Upload failed (${res.status})`;
+    try {
+      const errorData = await res.json();
+      if (errorData.detail) errorDetail = errorData.detail;
+    } catch (e) {
+      if (res.status === 413) {
+        errorDetail = 'File too large (413). Vercel limits uploads to 4.5MB. Set VITE_API_URL to point directly to your backend.';
+      } else if (res.status === 404) {
+        errorDetail = 'API not found (404). Please ensure VITE_API_URL is correctly set in Vercel environment variables.';
+      }
+    }
+    throw new Error(errorDetail);
+  }
   return res.json();
 };
 

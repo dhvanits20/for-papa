@@ -126,27 +126,27 @@ async def upload_memories(
         saved_memories.append(saved)
     elif files:
         for file in files:
-            content = await file.read()
             mime_type = file.content_type or "application/octet-stream"
             
             if settings.CLOUDINARY_CLOUD_NAME:
                 # Upload to Cloudinary
                 resource_type = "video" if mime_type.startswith("video") else "image"
                 upload_result = cloudinary.uploader.upload(
-                    content, 
+                    file.file, 
                     resource_type=resource_type,
                     folder="for-papa"
                 )
                 rel_path = upload_result.get("secure_url")
             else:
                 # Generate unique filename to avoid overwrites
-                file_ext = os.path.splitext(file.filename)[1]
+                file_ext = os.path.splitext(file.filename or "")[1]
                 unique_filename = f"{uuid.uuid4()}{file_ext}"
                 full_path = os.path.join(target_dir, unique_filename)
     
-                # Write file to local storage
+                # Write file to local storage in chunks to save memory
                 with open(full_path, "wb") as f:
-                    f.write(content)
+                    while chunk := await file.read(8192):
+                        f.write(chunk)
     
                 # Relativize path for database storage to maintain portability
                 rel_path = os.path.relpath(full_path, start=settings.STORAGE_DIR).replace("\\", "/")
