@@ -11,6 +11,7 @@ function AppContent() {
   const { user, isLoading } = useContext(AuthContext);
   const [page, setPage] = useState('home'); // 'home' | 'grid' | 'gallery' | 'share'
   const [selectedMonth, setSelectedMonth] = useState({ year: null, month: null });
+  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   const [shareToken, setShareToken] = useState(null);
 
   useEffect(() => {
@@ -48,7 +49,7 @@ function AppContent() {
         <Navbar page={page} navigateTo={navigateTo} isGuest={isGuest} />
         <main>
           {page === 'home' && <Hero navigateTo={navigateTo} isGuest={isGuest} shareToken={shareToken} />}
-          {page === 'grid' && <Grid navigateTo={navigateTo} shareToken={shareToken} isGuest={isGuest} />}
+          {page === 'grid' && <Grid navigateTo={navigateTo} shareToken={shareToken} isGuest={isGuest} selectedYear={selectedYear} setSelectedYear={setSelectedYear} />}
           {page === 'gallery' && (
             <Gallery
               year={selectedMonth.year}

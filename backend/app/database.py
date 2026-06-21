@@ -228,10 +228,25 @@ class SQLiteRepo:
             """, (user_id,)).fetchall()
             return [dict(r) for r in rows]
 
-    async def get_covers(self, user_id: str) -> Dict[str, str]:
+    async def get_covers(self, user_id: str) -> Dict[str, Any]:
         with self._get_conn() as conn:
-            rows = conn.execute("SELECT * FROM covers WHERE user_id = ?", (user_id,)).fetchall()
-            return {r["year_month"]: r["memory_id"] for r in rows}
+            rows = conn.execute("""
+                SELECT c.year_month, m.*
+                FROM covers c
+                JOIN memories m ON c.memory_id = m.id AND c.user_id = m.user_id
+                WHERE c.user_id = ? AND m.is_deleted = 0
+            """, (user_id,)).fetchall()
+            covers_map = {}
+            for r in rows:
+                m = dict(r)
+                year_month = m.pop("year_month")
+                m["reactions"] = json.loads(m["reactions"])
+                m["comments"] = json.loads(m["comments"])
+                m["is_deleted"] = bool(m["is_deleted"])
+                m["is_favorite"] = bool(m.get("is_favorite", 0))
+                m["tags"] = json.loads(m.get("tags", "[]") or "[]")
+                covers_map[year_month] = m
+            return covers_map
 
     async def set_cover(self, year_month: str, memory_id: str, user_id: str) -> bool:
         with self._get_conn() as conn:
@@ -382,11 +397,33 @@ class MongoRepo:
             })
         return stats
 
-    async def get_covers(self, user_id: str) -> Dict[str, str]:
-        cursor = self.covers.find({"user_id": user_id})
+    async def get_covers(self, user_id: str) -> Dict[str, Any]:
+        pipeline = [
+            {"$match": {"user_id": user_id}},
+            {"$lookup": {
+                "from": "memories",
+                "let": {"memory_id": "$memory_id", "user_id": "$user_id"},
+                "pipeline": [
+                    {"$match": {
+                        "$expr": {
+                            "$and": [
+                                {"$eq": ["$id", "$$memory_id"]},
+                                {"$eq": ["$user_id", "$$user_id"]},
+                                {"$eq": ["$is_deleted", False]}
+                            ]
+                        }
+                    }}
+                ],
+                "as": "memory"
+            }},
+            {"$unwind": "$memory"}
+        ]
+        cursor = self.covers.aggregate(pipeline)
         covers_map = {}
         async for doc in cursor:
-            covers_map[doc["year_month"]] = doc["memory_id"]
+            m = doc["memory"]
+            m.pop("_id", None)
+            covers_map[doc["year_month"]] = m
         return covers_map
 
     async def set_cover(self, year_month: str, memory_id: str, user_id: str) -> bool:

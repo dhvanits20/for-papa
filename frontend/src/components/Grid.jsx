@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { ChevronLeft, ChevronRight, Image } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Image, Quote } from 'lucide-react'
 import { getStats, getCovers, getFileUrl } from '../utils/api'
 
 const MONTHS = [
@@ -8,10 +8,9 @@ const MONTHS = [
   'July','August','September','October','November','December'
 ]
 
-export default function Grid({ navigateTo, shareToken, isGuest }) {
-  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear())
+export default function Grid({ navigateTo, shareToken, isGuest, selectedYear, setSelectedYear }) {
   const [stats, setStats] = useState({})  // { "YYYY-MM": count }
-  const [covers, setCovers] = useState({}) // { "YYYY-MM": memoryId }
+  const [covers, setCovers] = useState({}) // { "YYYY-MM": memory object }
   const [loading, setLoading] = useState(true)
 
   // Available years: 2008 to 2030
@@ -81,7 +80,7 @@ export default function Grid({ navigateTo, shareToken, isGuest }) {
           const monthNum = idx + 1
           const key = `${selectedYear}-${String(monthNum).padStart(2, '0')}`
           const count = stats[key] || 0
-          const coverId = covers[key]
+          const cover = covers[key]
 
           return (
             <motion.button
@@ -96,12 +95,26 @@ export default function Grid({ navigateTo, shareToken, isGuest }) {
               className="relative overflow-hidden rounded-2xl aspect-[4/5] text-left group border border-transparent hover:border-white/50 hover:shadow-2xl transition-all duration-300"
             >
               {/* Cover Image / Placeholder */}
-              {coverId ? (
-                <img
-                  src={getFileUrl(coverId, shareToken)}
-                  alt={month}
-                  className="absolute inset-0 w-full h-full object-cover"
-                />
+              {cover ? (
+                cover.file_type === 'text/quote' ? (
+                  <div className="absolute inset-0 w-full h-full bg-[#FDFBF7] p-4 flex flex-col items-center justify-center text-center">
+                    <Quote className="w-6 h-6 text-terracotta-200 mb-2 opacity-50" />
+                    <p className="font-serif text-xs text-charcoal line-clamp-4 px-2 leading-relaxed">"{cover.description}"</p>
+                  </div>
+                ) : cover.file_type?.startsWith('video') ? (
+                  <video
+                    src={getFileUrl(cover.id, shareToken)}
+                    className="absolute inset-0 w-full h-full object-cover"
+                    muted
+                    preload="metadata"
+                  />
+                ) : (
+                  <img
+                    src={getFileUrl(cover.id, shareToken)}
+                    alt={month}
+                    className="absolute inset-0 w-full h-full object-cover"
+                  />
+                )
               ) : (
                 <div className={`absolute inset-0 ${
                   count > 0
