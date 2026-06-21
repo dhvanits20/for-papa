@@ -11,7 +11,7 @@ function AppContent() {
   const { user, isLoading } = useContext(AuthContext);
   const [page, setPage] = useState('home'); // 'home' | 'grid' | 'gallery' | 'share'
   const [selectedMonth, setSelectedMonth] = useState({ year: null, month: null });
-  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
+  const [selectedYear, setSelectedYear] = useState(2008);
   const [shareToken, setShareToken] = useState(null);
 
   useEffect(() => {
